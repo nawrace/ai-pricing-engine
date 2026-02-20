@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>AI Pricing Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#060a12;--surface:#0d1421;--border:#1a2d45;--accent:#3b82f6;--green:#10b981;--text:#e0f0ff;--muted:#4a7a9b}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 40px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--green)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.main{max-width:1100px;margin:40px auto;padding:0 24px;display:grid;grid-template-columns:380px 1fr;gap:24px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-header{padding:20px 24px;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;background:rgba(59,130,246,0.05)}
+.card-body{padding:24px}
+.field{margin-bottom:16px}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+select,input{width:100%;background:#0a1628;border:1.5px solid var(--border);border-radius:8px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s}
+select:focus,input:focus{border-color:var(--accent)}
+.btn{width:100%;background:var(--accent);color:white;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:8px}
+.btn:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 4px 20px rgba(59,130,246,0.4)}
+.results{display:none}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.kpi{background:#0a1628;border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center}
+.kpi-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent)}
+.kpi-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.risk-box{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:center}
+.risk-title{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.risk-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--green)}
+canvas{width:100%;max-height:220px}
+.loading{text-align:center;padding:40px;color:var(--muted);display:none}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:800px){.main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚡ AI Pricing Engine</div>
+  <div class="status"><div class="dot"></div> Live ML Model Active</div>
+</header>
+<div class="main">
+  <div class="card">
+    <div class="card-header">🎯 Pricing Optimizer</div>
+    <div class="card-body">
+      <div class="field"><label>Product</label>
+        <select id="product"><option>Laptop</option><option>Smartphone</option><option>Tablet</option><option>Headphones</option><option>Smartwatch</option></select></div>
+      <div class="field"><label>Season</label>
+        <select id="season"><option>Fall</option><option>Summer</option><option>Spring</option><option>Winter</option></select></div>
+      <div class="field"><label>Cost Price ($)</label><input id="cost" type="number" value="600" min="0"/></div>
+      <div class="field"><label>Min Price ($)</label><input id="minp" type="number" value="700" min="0"/></div>
+      <div class="field"><label>Max Price ($)</label><input id="maxp" type="number" value="1800" min="0"/></div>
+      <div class="field"><label>Marketing Budget ($)</label><input id="mkt" type="number" value="2000" min="0"/></div>
+      <div class="field"><label>Competitor Price ($)</label><input id="comp" type="number" value="1100" min="0"/></div>
+      <button class="btn" onclick="optimize()">🚀 Optimize Price</button>
+    </div>
+  </div>
+  <div>
+    <div class="loading" id="loading"><div class="spinner"></div>Running AI optimization...</div>
+    <div class="results card" id="results">
+      <div class="card-header">📊 Optimization Results</div>
+      <div class="card-body">
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-val" id="r-price">—</div><div class="kpi-label">Optimal Price</div></div>
+          <div class="kpi"><div class="kpi-val" id="r-demand">—</div><div class="kpi-label">Expected Demand</div></div>
+          <div class="kpi"><div class="kpi-val" id="r-profit" style="color:#10b981">—</div><div class="kpi-label">Expected Profit</div></div>
+          <div class="kpi"><div class="kpi-val" id="r-margin" style="color:#8b5cf6">—</div><div class="kpi-label">Profit Margin</div></div>
+        </div>
+        <div class="risk-box">
+          <div class="risk-title">Profit Risk Range</div>
+          <div class="risk-val" id="r-risk">—</div>
+        </div>
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+async function optimize(){
+  const loading=document.getElementById('loading');
+  const results=document.getElementById('results');
+  loading.style.display='block';results.style.display='none';
+  try{
+    const res=await fetch('http://127.0.0.1:8000/optimize',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        product:document.getElementById('product').value,
+        season:document.getElementById('season').value,
+        cost:parseFloat(document.getElementById('cost').value),
+        min_price:parseFloat(document.getElementById('minp').value),
+        max_price:parseFloat(document.getElementById('maxp').value),
+        marketing:parseFloat(document.getElementById('mkt').value),
+        competitor_price:parseFloat(document.getElementById('comp').value)
+      })
+    });
+    const d=await res.json();
+    document.getElementById('r-price').textContent='$'+d.optimal_price.toLocaleString();
+    document.getElementById('r-demand').textContent=d.expected_demand+' units';
+    document.getElementById('r-profit').textContent='$'+d.expected_profit.toLocaleString();
+    document.getElementById('r-margin').textContent=d.profit_margin+'%';
+    document.getElementById('r-risk').textContent='$'+d.risk_range.low.toLocaleString()+' — $'+d.risk_range.high.toLocaleString();
+    drawChart(d.curve.prices,d.curve.profits);
+    loading.style.display='none';results.style.display='block';
+  }catch(e){loading.style.display='none';alert('Make sure the API server is running!');}
+}
+function drawChart(prices,profits){
+  const c=document.getElementById('chart');
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth;c.height=220;
+  ctx.clearRect(0,0,c.width,c.height);
+  const maxP=Math.max(...profits);const minP=Math.min(...profits);
+  const pad=40;const w=c.width-pad*2;const h=c.height-pad*2;
+  ctx.strokeStyle='#1a2d45';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad+h*i/4;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(pad+w,y);ctx.stroke();}
+  const pts=prices.map((p,i)=>({x:pad+w*i/(prices.length-1),y:pad+h*(1-(profits[i]-minP)/(maxP-minP||1))}));
+  const grad=ctx.createLinearGradient(0,pad,0,pad+h);
+  grad.addColorStop(0,'rgba(59,130,246,0.3)');grad.addColorStop(1,'rgba(59,130,246,0)');
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x,pad+h);ctx.lineTo(pts[0].x,pad+h);
+  ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#3b82f6';ctx.lineWidth=2.5;
+  pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.stroke();
+  ctx.fillStyle='#e0f0ff';ctx.font='11px DM Sans,sans-serif';ctx.textAlign='center';
+  [0,5,10,15,20].forEach(i=>{ctx.fillText('$'+prices[i].toFixed(0),pts[i].x,pad+h+16);});
+  ctx.fillStyle='#4a7a9b';ctx.font='11px DM Sans';ctx.textAlign='left';
+  ctx.fillText('Profit vs Price Curve',pad,pad-10);
+}
+</script>
+</body>
+</html>

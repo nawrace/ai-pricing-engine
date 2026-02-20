@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+scikit-learn
+xgboost
+numpy
+scipy
+pandas
+psycopg2-binary
+python-multipart
